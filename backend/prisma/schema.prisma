@@ -1,13 +1,416 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  FACULTY
+  UNIVERSITY_ADMIN
+  SUPER_ADMIN
+}
+
+enum SubjectType {
+  DSC
+  DSE
+  SEC
+  VAC
+  AEC
+  GE
+}
+
+enum ResourceType {
+  PYQ
+  NOTES
+  SYLLABUS
+  BOOK
+  ASSIGNMENT
+  LAB_MANUAL
+  OTHER
+}
+
+enum ResourceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UploadType {
+  IMAGE
+  PDF
+  VIDEO
+  DOCUMENT
+}
+
+enum ExamType {
+  MID_SEM
+  END_SEM
+  PRACTICAL
+  INTERNAL
+}
+
+enum Visibility {
+  PUBLIC
+  PREMIUM
+}
+
+model University {
+  id String @id @default(cuid())
+
+  name      String
+  shortName String  @unique
+  website   String?
+
+  logoId String?
+  logo   Upload? @relation("UniversityLogo", fields: [logoId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  colleges College[]
+  courses  Course[]
+  users    User[]
+
+  @@index([shortName])
+}
+
+model College {
+  id String @id @default(cuid())
+
+  name      String
+  shortName String?
+  code      String? @unique
+  website   String?
+
+  logoId String?
+  logo   Upload? @relation("CollegeLogo", fields: [logoId], references: [id])
+
+  universityId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  university University @relation(fields: [universityId], references: [id])
+
+  users          User[]
+  collegeCourses CollegeCourse[]
+
+  @@unique([name, universityId])
+  @@index([universityId])
+}
+
+model Course {
+  id String @id @default(cuid())
+
+  name      String
+  shortName String?
+  code      String? @unique
+
+  durationYears  Int
+  totalSemesters Int
+
+  universityId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  university University @relation(fields: [universityId], references: [id])
+
+  subjects       Subject[]
+  users          User[]
+  collegeCourses CollegeCourse[]
+
+  @@unique([name, universityId])
+  @@index([universityId])
+}
+
+model CollegeCourse {
+  collegeId String
+  courseId  String
+
+  // Relations
+  college College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@id([collegeId, courseId])
+  @@index([courseId])
+}
+
+model Subject {
+  id String @id @default(cuid())
+
+  name String
+  code String
+
+  semester Int
+  credits  Int
+
+  type SubjectType
+
+  description String?
+
+  isActive Boolean @default(true)
+
+  courseId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  course    Course     @relation(fields: [courseId], references: [id])
+  resources Resource[]
+
+  @@unique([courseId, code])
+  @@index([courseId])
+  @@index([courseId, semester])
+  @@index([type])
+}
+
+model User {
+  id String @id @default(cuid())
+
+  firstName String
+  lastName  String?
+
+  username String @unique
+
+  email    String @unique
+  password String
+
+  bio      String?
+  headline String?
+
+  avatarId String?
+  avatar   Upload? @relation("UserAvatar", fields: [avatarId], references: [id])
+
+  role UserRole @default(STUDENT)
+
+  universityId String
+  collegeId    String
+  courseId     String
+
+  currentSemester Int
+
+  isVerified Boolean @default(false)
+  isActive   Boolean @default(true)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastSeenAt DateTime?
+
+  // Relations
+  university University @relation(fields: [universityId], references: [id])
+  college    College    @relation(fields: [collegeId], references: [id])
+  course     Course     @relation(fields: [courseId], references: [id])
+
+  uploads Upload[]
+
+  uploadedResources Resource[] @relation("UploadedResources")
+  approvedResources Resource[] @relation("ApprovedResources")
+
+  posts Post[]
+
+  comments  Comment[]
+  likes     Like[]
+  bookmarks Bookmark[]
+
+  @@index([universityId])
+  @@index([collegeId])
+  @@index([courseId])
+}
+
+model Upload {
+  id String @id @default(cuid())
+
+  originalName String
+  fileName     String
+
+  publicId String @unique
+
+  url       String
+  secureUrl String
+
+  mimeType  String
+  extension String
+
+  size Int
+
+  type UploadType
+
+  uploadedById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  avatarUsers User[] @relation("UserAvatar")
+
+  universityLogos University[] @relation("UniversityLogo")
+  collegeLogos    College[]    @relation("CollegeLogo")
+
+  resource Resource?
+
+  postCoverImages Post[]
+
+  @@index([uploadedById])
+  @@index([type])
+}
+
+model Resource {
+  id String @id @default(cuid())
+
+  title       String
+  description String?
+
+  resourceType ResourceType
+  examType     ExamType?
+
+  academicSession String?
+
+  visibility Visibility @default(PUBLIC)
+
+  status ResourceStatus @default(PENDING)
+
+  rejectionReason String?
+
+  downloadCount Int @default(0)
+
+  subjectId String
+  uploadId  String @unique
+
+  uploadedById String
+  approvedById String?
+  approvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  upload Upload @relation(fields: [uploadId], references: [id])
+
+  uploadedBy User @relation("UploadedResources", fields: [uploadedById], references: [id])
+
+  approvedBy User? @relation("ApprovedResources", fields: [approvedById], references: [id])
+
+  comments  Comment[]
+  likes     Like[]
+  bookmarks Bookmark[]
+
+  @@index([subjectId])
+  @@index([uploadedById])
+  @@index([approvedById])
+  @@index([status])
+  @@index([resourceType])
+  @@index([subjectId, status])
+}
+
+model Post {
+  id String @id @default(cuid())
+
+  title   String
+  content String
+
+  coverImageId String?
+
+  authorId String
+
+  isPublished Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  coverImage Upload? @relation(fields: [coverImageId], references: [id])
+
+  author User @relation(fields: [authorId], references: [id])
+
+  comments  Comment[]
+  likes     Like[]
+  bookmarks Bookmark[]
+
+  @@index([authorId])
+}
+
+model Comment {
+  id String @id @default(cuid())
+
+  content String
+
+  userId String
+
+  postId     String?
+  resourceId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  resource Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([postId])
+  @@index([resourceId])
+}
+
+model Like {
+  id String @id @default(cuid())
+
+  userId String
+
+  postId     String?
+  resourceId String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  resource Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, resourceId])
+  @@index([userId])
+  @@index([postId])
+  @@index([resourceId])
+}
+
+model Bookmark {
+  id String @id @default(cuid())
+
+  userId String
+
+  postId     String?
+  resourceId String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  resource Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, resourceId])
+  @@index([userId])
+  @@index([postId])
+  @@index([resourceId])
 }
