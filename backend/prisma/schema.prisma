@@ -58,6 +58,12 @@ enum Visibility {
   PREMIUM
 }
 
+enum CollegeGender {
+  BOYS
+  WOMEN
+  CO_ED
+}
+
 model University {
   id String @id @default(cuid())
 
@@ -84,8 +90,10 @@ model College {
 
   name      String
   shortName String?
-  code      String? @unique
+  code      String?       @unique
   website   String?
+  address   String?
+  gender    CollegeGender @default(CO_ED)
 
   logoId String?
   logo   Upload? @relation("CollegeLogo", fields: [logoId], references: [id])

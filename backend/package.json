@@ -1,16 +1,21 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
   },
+
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+  ,
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -41,4 +46,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.65.0"
   }
+  
 }
