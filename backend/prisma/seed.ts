@@ -5,6 +5,7 @@ import { seedCourse } from "./seed/courses.seed";
 import { seedSubject } from "./seed/subjects.seeed";
 // import { seedUser } from "./seed/user.seed";
 import { seedAdmin } from "./seed/Admin.seed";
+import {seedUser} from "./seed/User.seed";
 
  const prisma = new PrismaClient();
  async function main() {
@@ -15,7 +16,8 @@ import { seedAdmin } from "./seed/Admin.seed";
     //  await seedCollegeCourse(prisma);
     //  await seedSubject(prisma);
     //  await seedUser(prisma);
-    await seedAdmin(prisma);
+   //  await seedAdmin(prisma);
+      await seedUser(prisma);
 
   console.log("✅ Database seeded successfully.");
  }
